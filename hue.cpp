@@ -488,6 +488,12 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
                 valueOk = true;
                 payloadItems.setFlag(HueManufacturerSpecificPayload::On);
                 itemList["on"] = QVariant(map[param].toBool() ? 0x01 : 0x00);
+
+                QVariantMap rspItem;
+                QVariantMap rspItemState;
+                rspItemState[QString("/lights/%1/state/on").arg(id)] = map[param].toBool();
+                rspItem["success"] = rspItemState;
+                rsp.list.append(rspItem);
             }
         }
         else if (param == "bri" && taskRef.lightNode->item(RStateBri))
@@ -501,6 +507,12 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
                     valueOk = true;
                     payloadItems.setFlag(HueManufacturerSpecificPayload::Brightness);
                     itemList["bri"] = QVariant(bri > 0xFE ? 0xFE : bri);
+
+                    QVariantMap rspItem;
+                    QVariantMap rspItemState;
+                    rspItemState[QString("/lights/%1/state/bri").arg(id)] = itemList["bri"];
+                    rspItem["success"] = rspItemState;
+                    rsp.list.append(rspItem);
                 }
             }
         }
@@ -517,6 +529,12 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
                     valueOk = true;
                     payloadItems.setFlag(HueManufacturerSpecificPayload::ColorTemperature);
                     itemList["ct"] = QVariant((ctMin < 500 && ct < ctMin) ? ctMin : (ctMax > ctMin && ct > ctMax) ? ctMax : ct);
+
+                    QVariantMap rspItem;
+                    QVariantMap rspItemState;
+                    rspItemState[QString("/lights/%1/state/ct").arg(id)] = itemList["ct"];
+                    rspItem["success"] = rspItemState;
+                    rsp.list.append(rspItem);
                 }
             }
         }
@@ -544,6 +562,15 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
 
                         payloadItems.setFlag(HueManufacturerSpecificPayload::Color);
                         itemList["xy"] = QVariant((colorX << 8) + colorY);
+
+                        QVariantMap rspItem;
+                        QVariantMap rspItemState;
+                        QVariantList xy;
+                        xy.append(colorX);
+                        xy.append(colorY);
+                        rspItemState[QString("/lights/%1/state/xy").arg(id)] = xy;
+                        rspItem["success"] = rspItemState;
+                        rsp.list.append(rspItem);
                     }
                     else
                     {
@@ -564,6 +591,12 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
                     valueOk = true;
                     payloadItems.setFlag(HueManufacturerSpecificPayload::TransitionTime);
                     itemList["transitiontime"] = QVariant(tt > 0xFFFE ? 0xFFFE : tt);
+
+                    QVariantMap rspItem;
+                    QVariantMap rspItemState;
+                    rspItemState[QString("/lights/%1/state/transitiontime").arg(id)] = itemList["transitiontime"];
+                    rspItem["success"] = rspItemState;
+                    rsp.list.append(rspItem);
                 }
             }
         }
@@ -579,6 +612,12 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
                     valueOk = true;
                     payloadItems.setFlag(HueManufacturerSpecificPayload::Effect);
                     itemList["effect"] = QVariant(effectNameToValue(e));
+
+                    QVariantMap rspItem;
+                    QVariantMap rspItemState;
+                    rspItemState[QString("/lights/%1/state/effect").arg(id)] = itemList["effect"];
+                    rspItem["success"] = rspItemState;
+                    rsp.list.append(rspItem);
                 }
             }
         }
@@ -609,6 +648,11 @@ int DeRestPluginPrivate::setHueLightState(const ApiRequest &req, ApiResponse &rs
                     payloadItems.setFlag(HueManufacturerSpecificPayload::EffectDuration);
                     itemList["effect_duration"] = QVariant(resolutionBase - (ed / resolution));
 
+                    QVariantMap rspItem;
+                    QVariantMap rspItemState;
+                    rspItemState[QString("/lights/%1/state/effect_duration").arg(id)] = itemList["effect_duration"];
+                    rspItem["success"] = rspItemState;
+                    rsp.list.append(rspItem);
                 }
             }
         }
