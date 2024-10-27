@@ -1051,7 +1051,7 @@ public:
 
     // REST API groups > scenes
     int createScene(const ApiRequest &req, ApiResponse &rsp);
-    int getAllScenes(const ApiRequest &req, ApiResponse &rsp);
+    int getAllGroupScenes(const ApiRequest &req, ApiResponse &rsp);
     int getSceneAttributes(const ApiRequest &req, ApiResponse &rsp);
     int setSceneAttributes(const ApiRequest &req, ApiResponse &rsp);
     int storeScene(const ApiRequest &req, ApiResponse &rsp);
@@ -1065,6 +1065,9 @@ public:
     int modifyHueScene(const ApiRequest &req, ApiResponse &rsp);
 
     bool groupToMap(const ApiRequest &req, const Group *group, QVariantMap &map);
+
+    // REST API scenes
+    int getAllScenes(const ApiRequest &req, ApiResponse &rsp);
 
     // REST API schedules
     void initSchedules();
