@@ -124,7 +124,12 @@ QString Scene::lightsToString(const std::vector<LightState> &lights)
     {
         QVariantMap map;
         map[QLatin1String("lid")] = i->lid();
-        map[QLatin1String("on")] = i->on();
+
+        if (i->on().has_value())
+        {
+            map[QLatin1String("on")] = i->on().value();
+        }
+
         if (i->bri().has_value())
         {
             map[QLatin1String("bri")] = (double)i->bri().value();
@@ -274,7 +279,7 @@ void LightState::setLightId(const QString &lid)
 
 /*! Returns the on status of the light of the scene.
  */
-bool LightState::on() const
+const std::optional<bool> &LightState::on() const
 {
     return m_on;
 }
@@ -282,7 +287,7 @@ bool LightState::on() const
 /*! Sets the on status of the light of the scene.
     \param on the on status of the light
  */
-void LightState::setOn(const bool &on)
+void LightState::setOn(const std::optional<bool> &on)
 {
     m_on = on;
 }

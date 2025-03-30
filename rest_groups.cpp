@@ -2330,7 +2330,11 @@ int DeRestPluginPrivate::getSceneAttributes(const ApiRequest &req, ApiResponse &
                 {
                     QVariantMap lstate;
                     lstate["id"] = l->lid();
-                    lstate["on"] = l->on();
+
+                    if (l->on().has_value())
+                    {
+                        lstate["on"] = l->on().value();
+                    }
 
                     if (l->bri().has_value())
                     {
@@ -2811,9 +2815,9 @@ static void recallSceneCheckGroupChanges(DeRestPluginPrivate *d, Group *group, S
         // TODO the following is fake, better let ZCL reporting and Poll manager let this figure out?!
 
         ResourceItem *item = lightNode->item(RStateOn);
-        if (item && item->toBool() != ls->on())
+        if (item && ls->on().has_value() && ls->on().value() != item->toBool())
         {
-            item->setValue(ls->on());
+            item->setValue(ls->on().value());
             enqueueEvent(Event(RLights, RStateOn, lightNode->id(), item));
             changed = true;
             groupOnChanged = true;
