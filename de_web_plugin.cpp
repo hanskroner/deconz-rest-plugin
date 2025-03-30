@@ -15898,6 +15898,10 @@ int DeRestPlugin::handleHttpRequest(const QHttpRequestHeader &hdr, QTcpSocket *s
                 {
                     ret = d->handleScenesApi(req, rsp);
                 }
+                else if (apiModule == QLatin1String("hue-scenes"))
+                {
+                    ret = d->handleHueScenesApi(req, rsp);
+                }
                 else if (apiModule == QLatin1String("sensors"))
                 {
                     ret = d->handleSensorsApi(req, rsp);
