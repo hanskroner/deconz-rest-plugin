@@ -78,7 +78,10 @@ int DeRestPluginPrivate::getAllScenes(const ApiRequest &req, ApiResponse &rsp)
                         QVariantMap lstate;
                         lstate["id"] = l->lid();
                         lstate["on"] = l->on();
-                        lstate["bri"] = l->bri();
+                        if (l->bri().has_value())
+                        {
+                            lstate["bri"] = l->bri().value();
+                        }
                         LightNode *lightNode = getLightNodeForId(l->lid());
                         if (lightNode && lightNode->hasColor())
                         {

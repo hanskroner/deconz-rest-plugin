@@ -125,7 +125,10 @@ QString Scene::lightsToString(const std::vector<LightState> &lights)
         QVariantMap map;
         map[QLatin1String("lid")] = i->lid();
         map[QLatin1String("on")] = i->on();
-        map[QLatin1String("bri")] = (double)i->bri();
+        if (i->bri().has_value())
+        {
+            map[QLatin1String("bri")] = (double)i->bri().value();
+        }
         map[QLatin1String("tt")] = (double)i->transitionTime();
         map[QLatin1String("cm")] = i->colorMode();
 
@@ -286,7 +289,7 @@ void LightState::setOn(const bool &on)
 
 /*! Returns the brightness of the light of the scene.
  */
-const uint8_t &LightState::bri() const
+const std::optional<uint8_t> &LightState::bri() const
 {
     return m_bri;
 }
@@ -294,7 +297,7 @@ const uint8_t &LightState::bri() const
 /*! Sets the brightness of the light of the scene.
     \param bri the brightness of the light
  */
-void LightState::setBri(const uint8_t &bri)
+void LightState::setBri(const std::optional<uint8_t> &bri)
 {
     m_bri = bri;
 }

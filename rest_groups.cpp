@@ -2329,7 +2329,12 @@ int DeRestPluginPrivate::getSceneAttributes(const ApiRequest &req, ApiResponse &
                     QVariantMap lstate;
                     lstate["id"] = l->lid();
                     lstate["on"] = l->on();
-                    lstate["bri"] = l->bri();
+
+                    if (l->bri().has_value())
+                    {
+                        lstate["bri"] = l->bri().value();
+                    }
+
                     LightNode *lightNode = getLightNodeForId(l->lid());
                     if (lightNode && lightNode->hasColor()) // TODO store hasColor in LightState
                     {
@@ -2807,9 +2812,9 @@ static void recallSceneCheckGroupChanges(DeRestPluginPrivate *d, Group *group, S
         }
 
         item = lightNode->item(RStateBri);
-        if (item && ls->bri() != item->toNumber())
+        if (item && ls->bri().has_value() && ls->bri().value() != item->toNumber())
         {
-            item->setValue(ls->bri());
+            item->setValue(ls->bri().value());
             enqueueEvent(Event(RLights, RStateBri, lightNode->id(), item));
             changed = true;
             groupBriChanged = true;

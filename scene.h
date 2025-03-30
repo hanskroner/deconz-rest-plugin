@@ -13,6 +13,7 @@
 
 #include <stdint.h>
 #include <QString>
+#include <optional>
 #include <vector>
 #include <QElapsedTimer>
 #include "json.h"
@@ -73,8 +74,8 @@ public:
     void setLightId(const QString &lid);
     bool on() const;
     void setOn(const bool &on);
-    const uint8_t &bri() const;
-    void setBri(const uint8_t &bri);
+    const std::optional<uint8_t> &bri() const;
+    void setBri(const std::optional<uint8_t> &bri);
     const uint16_t &x() const;
     void setX(const uint16_t &x);
     const uint16_t &y() const;
@@ -104,7 +105,7 @@ private:
     QString m_lid;
     bool m_on;
     bool m_needRead;
-    uint8_t m_bri;
+    std::optional<uint8_t> m_bri;
     uint16_t m_x;
     uint16_t m_y;
     uint16_t m_colorTemperature;
