@@ -1343,9 +1343,12 @@ bool DeRestPluginPrivate::addTaskAddScene(TaskItem &task, uint16_t groupId, uint
                     stream << (uint16_t)0x0006; // on/off cluster
                     stream << (uint8_t)0x01;
                     stream << on;
-                    stream << (uint16_t)0x0008; // level cluster
-                    stream << (uint8_t)0x01;
-                    stream << l->bri();
+                    if (l->bri().has_value())
+                    {
+                        stream << (uint16_t)0x0008; // level cluster
+                        stream << (uint8_t)0x01;
+                        stream << l->bri().value();
+                    }
 
                     ResourceItem *item = task.lightNode->item(RStateColorMode);
                     if (item &&
