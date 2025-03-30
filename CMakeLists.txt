@@ -200,6 +200,7 @@ add_library(${PROJECT_NAME} SHARED
     rest_devices.cpp
     rest_gateways.cpp
     rest_groups.cpp
+    rest_hue_scenes.cpp
     rest_info.cpp
     rest_lights.cpp
     rest_node_base.cpp
