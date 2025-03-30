@@ -72,8 +72,8 @@ public:
 
     const QString &lid() const;
     void setLightId(const QString &lid);
-    bool on() const;
-    void setOn(const bool &on);
+    const std::optional<bool> &on() const;
+    void setOn(const std::optional<bool> &on);
     const std::optional<uint8_t> &bri() const;
     void setBri(const std::optional<uint8_t> &bri);
     const uint16_t &x() const;
@@ -103,7 +103,7 @@ public:
 
 private:
     QString m_lid;
-    bool m_on;
+    std::optional<bool> m_on;
     bool m_needRead;
     std::optional<uint8_t> m_bri;
     uint16_t m_x;

@@ -77,7 +77,12 @@ int DeRestPluginPrivate::getAllScenes(const ApiRequest &req, ApiResponse &rsp)
 
                         QVariantMap lstate;
                         lstate["id"] = l->lid();
-                        lstate["on"] = l->on();
+
+                        if (l->on().has_value())
+                        {
+                            lstate["on"] = l->on().value();
+                        }
+
                         if (l->bri().has_value())
                         {
                             lstate["bri"] = l->bri().value();

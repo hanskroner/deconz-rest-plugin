@@ -1320,7 +1320,6 @@ bool DeRestPluginPrivate::addTaskAddScene(TaskItem &task, uint16_t groupId, uint
                     QDataStream stream(&task.zclFrame.payload(), QIODevice::WriteOnly);
                     stream.setByteOrder(QDataStream::LittleEndian);
 
-                    uint8_t on = (l->on()) ? 0x01 : 0x00;
                     uint16_t tt;
 
                     if (l->transitionTime() >= 10)
@@ -1340,9 +1339,13 @@ bool DeRestPluginPrivate::addTaskAddScene(TaskItem &task, uint16_t groupId, uint
 
                     stream << (uint8_t)0x00; // length of name
                     //stream << i->name;     // name not supported
-                    stream << (uint16_t)0x0006; // on/off cluster
-                    stream << (uint8_t)0x01;
-                    stream << on;
+                    if (l->on().has_value())
+                    {
+                        uint8_t on = (l->on().value()) ? 0x01 : 0x00;
+                        stream << (uint16_t)0x0006; // on/off cluster
+                        stream << (uint8_t)0x01;
+                        stream << on;
+                    }
                     if (l->bri().has_value())
                     {
                         stream << (uint16_t)0x0008; // level cluster
