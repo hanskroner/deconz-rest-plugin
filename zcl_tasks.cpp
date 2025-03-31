@@ -1353,84 +1353,108 @@ bool DeRestPluginPrivate::addTaskAddScene(TaskItem &task, uint16_t groupId, uint
                         stream << l->bri().value();
                     }
 
-                    ResourceItem *item = task.lightNode->item(RStateColorMode);
-                    if (item &&
-                            !task.lightNode->modelId().startsWith(QLatin1String("FLS-PP3"))) // color in add scene not supported well
+                    if (l->colorMode().has_value() && ((l->x().has_value() && l->y().has_value()) || (l->colorTemperature().has_value())))
                     {
-                        stream << (uint16_t)0x0300; // color cluster
-                        stream << (uint8_t)11; // size
-                        if (l->colorMode() == QLatin1String("ct"))
+                        ResourceItem *item = task.lightNode->item(RStateColorMode);
+                        if (item &&
+                            !task.lightNode->modelId().startsWith(QLatin1String("FLS-PP3"))) // color in add scene not supported well
                         {
-                            quint16 x,y;
-                            quint16 enhancedHue = 0;
-                            ResourceItem *ctMin = task.lightNode->item(RCapColorCtMin);
-                            ResourceItem *ctMax = task.lightNode->item(RCapColorCtMax);
+                            stream << (uint16_t)0x0300; // color cluster
+                            stream << (uint8_t)11;      // size
+                            if (l->colorMode().value() == QLatin1String("ct") && l->colorTemperature().has_value())
+                            {
+                                quint16 x, y;
+                                quint16 enhancedHue = 0;
+                                ResourceItem *ctMin = task.lightNode->item(RCapColorCtMin);
+                                ResourceItem *ctMax = task.lightNode->item(RCapColorCtMax);
 
-                            if (task.lightNode->modelId().startsWith(QLatin1String("FLS-H")))
-                            {
-                                // quirks mode FLS-H stores color temperature in x
-                                x = l->colorTemperature();
-                                y = 0;
-                            }
-                            else if (task.lightNode->modelId().startsWith(QLatin1String("FLS-CT")))
-                            {
-                                // quirks mode FLS-CT stores color temperature in x
-                                x = l->colorTemperature();
-                                y = 0;
-                            }
-                            else if (task.lightNode->modelId().startsWith(QLatin1String("Ribag Air O")))
-                            {
-                                // quirks mode Ribag Air O stores color temperature in x
-                                x = l->colorTemperature();
-                                y = 0;
-                            }
-                            else if (task.lightNode->modelId().startsWith(QLatin1String("ICZB-F")) ||
-                                     task.lightNode->manufacturerCode() == VENDOR_MUELLER)
-                            {
-                                // quirks mode these lights store color temperature in hue
-                                enhancedHue = l->colorTemperature();
-                                x = 0;
-                                y = 0;
+                                if (task.lightNode->modelId().startsWith(QLatin1String("FLS-H")))
+                                {
+                                    // quirks mode FLS-H stores color temperature in x
+                                    x = l->colorTemperature().value();
+                                    y = 0;
+                                }
+                                else if (task.lightNode->modelId().startsWith(QLatin1String("FLS-CT")))
+                                {
+                                    // quirks mode FLS-CT stores color temperature in x
+                                    x = l->colorTemperature().value();
+                                    y = 0;
+                                }
+                                else if (task.lightNode->modelId().startsWith(QLatin1String("Ribag Air O")))
+                                {
+                                    // quirks mode Ribag Air O stores color temperature in x
+                                    x = l->colorTemperature().value();
+                                    y = 0;
+                                }
+                                else if (task.lightNode->modelId().startsWith(QLatin1String("ICZB-F")) ||
+                                         task.lightNode->manufacturerCode() == VENDOR_MUELLER)
+                                {
+                                    // quirks mode these lights store color temperature in hue
+                                    enhancedHue = l->colorTemperature().value();
+                                    x = 0;
+                                    y = 0;
+                                }
+                                else
+                                {
+                                    quint16 ct = l->colorTemperature().value();
+                                    if (ctMin && ctMax && ctMin->toNumber() > 0 && ctMax->toNumber() > 0)
+                                    {
+                                        if (ct < ctMin->toNumber())
+                                        {
+                                            ct = static_cast<quint16>(ctMin->toNumber());
+                                        }
+                                        else if (ct > ctMax->toNumber())
+                                        {
+                                            ct = static_cast<quint16>(ctMax->toNumber());
+                                        }
+                                    }
+
+                                    MiredColorTemperatureToXY(ct, &x, &y);
+                                    if (x > 65279)
+                                    {
+                                        x = 65279;
+                                    }
+                                    else if (x == 0)
+                                    {
+                                        x = 1;
+                                    }
+
+                                    if (y > 65279)
+                                    {
+                                        y = 65279;
+                                    }
+                                    else if (y == 0)
+                                    {
+                                        y = 1;
+                                    }
+                                }
+
+                                // view scene command will be used to verify x, y values
+                                if (l->x().has_value() && l->y().has_value() && (l->x().value() != x || l->y().value() != y))
+                                {
+                                    l->setX(x);
+                                    l->setY(y);
+                                }
+
+                                stream << x;
+                                stream << y;
+                                stream << enhancedHue;
+                                stream << (quint8)0; // saturation
                             }
                             else
                             {
-                                quint16 ct = l->colorTemperature();
-                                if (ctMin && ctMax && ctMin->toNumber() > 0 && ctMax->toNumber() > 0)
+                                if (l->x().has_value() && l->y().has_value())
                                 {
-                                    if      (ct < ctMin->toNumber()) { ct = static_cast<quint16>(ctMin->toNumber()); }
-                                    else if (ct > ctMax->toNumber()) { ct = static_cast<quint16>(ctMax->toNumber()); }
+                                    stream << l->x().value();
+                                    stream << l->y().value();
+                                    stream << l->enhancedHue();
+                                    stream << l->saturation();
                                 }
-
-                                MiredColorTemperatureToXY(ct, &x, &y);
-                                if (x > 65279) { x = 65279; }
-                                else if (x == 0) { x = 1; }
-
-                                if (y > 65279) { y = 65279; }
-                                else if (y == 0) { y = 1; }
                             }
-
-                            // view scene command will be used to verify x, y values
-                            if (l->x() != x || l->y() != y)
-                            {
-                                l->setX(x);
-                                l->setY(y);
-                            }
-
-                            stream << x;
-                            stream << y;
-                            stream << enhancedHue;
-                            stream << (quint8)0; // saturation
+                            stream << (quint8)l->colorloopActive();
+                            stream << (quint8)l->colorloopDirection();
+                            stream << (quint16)l->colorloopTime();
                         }
-                        else
-                        {
-                            stream << l->x();
-                            stream << l->y();
-                            stream << l->enhancedHue();
-                            stream << l->saturation();
-                        }
-                        stream << (quint8)l->colorloopActive();
-                        stream << (quint8)l->colorloopDirection();
-                        stream << (quint16)l->colorloopTime();
                     }
                 }
 

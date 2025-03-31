@@ -2342,28 +2342,43 @@ int DeRestPluginPrivate::getSceneAttributes(const ApiRequest &req, ApiResponse &
                     LightNode *lightNode = getLightNodeForId(l->lid());
                     if (lightNode && lightNode->hasColor()) // TODO store hasColor in LightState
                     {
-                        if (l->colorMode() == QLatin1String("xy"))
+                        if (l->colorMode().has_value())
                         {
-                            double x = l->x() / 65535.0;
-                            double y = l->y() / 65535.0;
-                            if (x > 0.9961) { x = 0.9961; }
-                            else if (x < 0) { x = 0; }
-                            if (y > 0.9961) { y = 0.9961; }
-                            else if (y < 0) { y = 0; }
-                            lstate["x"] = x;
-                            lstate["y"] = y;
-                        }
-                        else if (l->colorMode() == QLatin1String("ct"))
-                        {
-                            lstate["ct"] = (double)l->colorTemperature();
-                        }
-                        else if (l->colorMode() == QLatin1String("hs"))
-                        {
-                            lstate["hue"] = (double)l->enhancedHue();
-                            lstate["sat"] = (double)l->saturation();
-                        }
+                            if (l->colorMode().value() == QLatin1String("xy") && l->x().has_value() && l->y().has_value())
+                            {
+                                double x = l->x().value() / 65535.0;
+                                double y = l->y().value() / 65535.0;
+                                if (x > 0.9961)
+                                {
+                                    x = 0.9961;
+                                }
+                                else if (x < 0)
+                                {
+                                    x = 0;
+                                }
+                                if (y > 0.9961)
+                                {
+                                    y = 0.9961;
+                                }
+                                else if (y < 0)
+                                {
+                                    y = 0;
+                                }
+                                lstate["x"] = x;
+                                lstate["y"] = y;
+                            }
+                            else if (l->colorMode().value() == QLatin1String("ct") && l->colorTemperature().has_value())
+                            {
+                                lstate["ct"] = (double)l->colorTemperature().value();
+                            }
+                            else if (l->colorMode().value() == QLatin1String("hs"))
+                            {
+                                lstate["hue"] = (double)l->enhancedHue();
+                                lstate["sat"] = (double)l->saturation();
+                            }
 
-                        lstate["colormode"] = l->colorMode();
+                            lstate["colormode"] = l->colorMode().value();
+                        }
                     }
                     lstate["transitiontime"] = l->transitionTime();
 
@@ -2825,34 +2840,34 @@ static void recallSceneCheckGroupChanges(DeRestPluginPrivate *d, Group *group, S
         }
 
         item = lightNode->item(RStateColorMode);
-        if (item)
+        if (item && ls->colorMode().has_value())
         {
-            if (ls->colorMode() != item->toString())
+            if (ls->colorMode().value() != item->toString())
             {
-                item->setValue(ls->colorMode());
+                item->setValue(ls->colorMode().value());
                 enqueueEvent(Event(RLights, RStateColorMode, lightNode->id()));
                 changed = true;
                 groupColorModeChanged = true;
             }
 
-            if (ls->colorMode() == QLatin1String("xy"))
+            if (ls->colorMode().value() == QLatin1String("xy"))
             {
                 item = lightNode->item(RStateX);
-                if (item && ls->x() != item->toNumber())
+                if (item && ls->x().has_value() && ls->x().value() != item->toNumber())
                 {
-                    item->setValue(ls->x());
+                    item->setValue(ls->x().value());
                     enqueueEvent(Event(RLights, RStateX, lightNode->id(), item));
                     changed = true;
                 }
                 item = lightNode->item(RStateY);
-                if (item && ls->y() != item->toNumber())
+                if (item && ls->y().has_value() && ls->y().value() != item->toNumber())
                 {
-                    item->setValue(ls->y());
+                    item->setValue(ls->y().value());
                     enqueueEvent(Event(RLights, RStateY, lightNode->id(), item));
                     changed = true;
                 }
             }
-            else if(ls->colorMode() == QLatin1String("ct"))
+            else if(ls->colorMode().value() == QLatin1String("ct"))
             {
                 if (lightNode->manufacturer() == QLatin1String("GLEDOPTO") &&
                     lightNode->type() == QLatin1String("Extended color light"))
@@ -2860,15 +2875,15 @@ static void recallSceneCheckGroupChanges(DeRestPluginPrivate *d, Group *group, S
                     gledoptoSetColorTemperatureInSceneHack(d, lightNode);
                 }
                 item = lightNode->item(RStateCt);
-                if (item && ls->colorTemperature() != item->toNumber())
+                if (item && ls->colorTemperature().has_value() && ls->colorTemperature().value() != item->toNumber())
                 {
-                    item->setValue(ls->colorTemperature());
+                    item->setValue(ls->colorTemperature().value());
                     enqueueEvent(Event(RLights, RStateCt, lightNode->id(), item));
                     changed = true;
                     groupCtChanged = true;
                 }
             }
-            else if (ls->colorMode() == QLatin1String("hs"))
+            else if (ls->colorMode().value() == QLatin1String("hs"))
             {
                 item = lightNode->item(RStateHue);
                 if (item && ls->enhancedHue() != item->toNumber())

@@ -134,28 +134,35 @@ QString Scene::lightsToString(const std::vector<LightState> &lights)
         {
             map[QLatin1String("bri")] = (double)i->bri().value();
         }
+
         map[QLatin1String("tt")] = (double)i->transitionTime();
-        map[QLatin1String("cm")] = i->colorMode();
 
-        if (i->colorMode() != QLatin1String("none"))
+        if (i->colorMode().has_value())
         {
-            map[QLatin1String("x")] = (double)i->x();
-            map[QLatin1String("y")] = (double)i->y();
+            map[QLatin1String("cm")] = i->colorMode().value();
 
-            if (i->colorMode() == QLatin1String("hs"))
+            if (i->colorMode().value() != QLatin1String("none"))
             {
-                map[QLatin1String("ehue")] = (double)i->enhancedHue();
-                map[QLatin1String("sat")] = (double)i->saturation();
-            }
-            else if (i->colorMode() == QLatin1String("ct"))
-            {
-                map[QLatin1String("ct")] = (double)i->colorTemperature();
-            }
+                if (i->x().has_value() && i->y().has_value())
+                {
+                    map[QLatin1String("x")] = (double)i->x().value();
+                    map[QLatin1String("y")] = (double)i->y().value();
+                }
 
-            map[QLatin1String("cl")] = i->colorloopActive();
-            map[QLatin1String("clTime")] = (double)i->colorloopTime();
+                if (i->colorMode().value() == QLatin1String("hs"))
+                {
+                    map[QLatin1String("ehue")] = (double)i->enhancedHue();
+                    map[QLatin1String("sat")] = (double)i->saturation();
+                }
+                else if (i->colorMode().value() == QLatin1String("ct") && i->colorTemperature().has_value())
+                {
+                    map[QLatin1String("ct")] = (double)i->colorTemperature().value();
+                }
+
+                map[QLatin1String("cl")] = i->colorloopActive();
+                map[QLatin1String("clTime")] = (double)i->colorloopTime();
+            }
         }
-
         ls.append(map);
     }
 
@@ -309,7 +316,7 @@ void LightState::setBri(const std::optional<uint8_t> &bri)
 
 /*! Returns the colorX value of the light of the scene.
  */
-const uint16_t &LightState::x() const
+const std::optional<uint16_t> &LightState::x() const
 {
     return m_x;
 }
@@ -317,14 +324,14 @@ const uint16_t &LightState::x() const
 /*! Sets the colorX value of the light of the scene.
     \param x the colorX value of the light
  */
-void LightState::setX(const uint16_t &x)
+void LightState::setX(const std::optional<uint16_t> &x)
 {
     m_x = x;
 }
 
 /*! Returns the colorY value of the light of the scene.
  */
-const uint16_t &LightState::y() const
+const std::optional<uint16_t> &LightState::y() const
 {
     return m_y;
 }
@@ -332,14 +339,14 @@ const uint16_t &LightState::y() const
 /*! Sets the colorY value of the light of the scene.
     \param y the colorY value of the light
  */
-void LightState::setY(const uint16_t &y)
+void LightState::setY(const std::optional<uint16_t> &y)
 {
     m_y = y;
 }
 
 /*! Returns the color temperature value of the light in the scene.
  */
-uint16_t LightState::colorTemperature() const
+const std::optional<uint16_t> &LightState::colorTemperature() const
 {
     return m_colorTemperature;
 }
@@ -347,7 +354,7 @@ uint16_t LightState::colorTemperature() const
 /*! Sets the color temperature value of the light in the scene.
     \param colorTemperature the color temperature value of the light
  */
-void LightState::setColorTemperature(uint16_t colorTemperature)
+void LightState::setColorTemperature(const std::optional<uint16_t> &colorTemperature)
 {
     m_colorTemperature = colorTemperature;
 }
@@ -429,7 +436,7 @@ void LightState::setColorloopTime(const uint8_t &time)
 
 /*! Returns the color mode of the light in the scene.
  */
-const QString &LightState::colorMode() const
+const std::optional<QString> &LightState::colorMode() const
 {
     return m_colorMode;
 }
@@ -437,7 +444,7 @@ const QString &LightState::colorMode() const
 /*! Sets the color mode of the light in the scene.
     \param colorMode the color mode of the light
  */
-void LightState::setColorMode(const QString &colorMode)
+void LightState::setColorMode(const std::optional<QString> &colorMode)
 {
     if (m_colorMode != colorMode)
     {

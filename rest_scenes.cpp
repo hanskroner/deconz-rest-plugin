@@ -87,14 +87,15 @@ int DeRestPluginPrivate::getAllScenes(const ApiRequest &req, ApiResponse &rsp)
                         {
                             lstate["bri"] = l->bri().value();
                         }
+
                         LightNode *lightNode = getLightNodeForId(l->lid());
-                        if (lightNode && lightNode->hasColor())
+                        if (lightNode && lightNode->hasColor() && l->colorMode().has_value())
                         {
-                            if (l->colorMode() == QLatin1String("xy"))
+                            if (l->colorMode().value() == QLatin1String("xy") && l->x().has_value() && l->y().has_value())
                             {
                                 QVariantList xy;
-                                double x = l->x();
-                                double y = l->y();
+                                double x = l->x().value();
+                                double y = l->y().value();
 
                                 if (x > 0xFEFF) x = 0xFEFF;
                                 if (y > 0xFEFF) y = 0xFEFF;
@@ -104,17 +105,17 @@ int DeRestPluginPrivate::getAllScenes(const ApiRequest &req, ApiResponse &rsp)
 
                                 lstate["xy"] = xy;
                             }
-                            else if (l->colorMode() == QLatin1String("ct"))
+                            else if (l->colorMode().value() == QLatin1String("ct") && l->colorTemperature().has_value())
                             {
-                                lstate["ct"] = (double)l->colorTemperature();
+                                lstate["ct"] = (double)l->colorTemperature().value();
                             }
-                            else if (l->colorMode() == QLatin1String("hs"))
+                            else if (l->colorMode().value() == QLatin1String("hs"))
                             {
                                 lstate["hue"] = (double)l->enhancedHue();
                                 lstate["sat"] = (double)l->saturation();
                             }
 
-                            lstate["colormode"] = l->colorMode();
+                            lstate["colormode"] = l->colorMode().value();
                         }
                         lstate["transitiontime"] = l->transitionTime();
 
