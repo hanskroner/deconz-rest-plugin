@@ -76,12 +76,12 @@ public:
     void setOn(const std::optional<bool> &on);
     const std::optional<uint8_t> &bri() const;
     void setBri(const std::optional<uint8_t> &bri);
-    const uint16_t &x() const;
-    void setX(const uint16_t &x);
-    const uint16_t &y() const;
-    void setY(const uint16_t &y);
-    uint16_t colorTemperature() const;
-    void setColorTemperature(uint16_t colorTemperature);
+    const std::optional<uint16_t> &x() const;
+    void setX(const std::optional<uint16_t> &x);
+    const std::optional<uint16_t> &y() const;
+    void setY(const std::optional<uint16_t> &y);
+    const std::optional<uint16_t> &colorTemperature() const;
+    void setColorTemperature(const std::optional<uint16_t> &colorTemperature);
     const uint16_t &enhancedHue() const;
     void setEnhancedHue(const uint16_t &enhancedHue);
     const uint8_t &saturation() const;
@@ -92,8 +92,8 @@ public:
     void setColorloopDirection(const uint8_t &direction);
     const uint8_t &colorloopTime() const;
     void setColorloopTime(const uint8_t &time);
-    const QString &colorMode() const;
-    void setColorMode(const QString &colorMode);
+    const std::optional<QString> &colorMode() const;
+    void setColorMode(const std::optional<QString> &colorMode);
     const uint16_t &transitionTime() const;
     void setTransitionTime(uint16_t transitionTime);
     bool needRead() const { return m_needRead; }
@@ -106,15 +106,15 @@ private:
     std::optional<bool> m_on;
     bool m_needRead;
     std::optional<uint8_t> m_bri;
-    uint16_t m_x;
-    uint16_t m_y;
-    uint16_t m_colorTemperature;
+    std::optional<uint16_t> m_x;
+    std::optional<uint16_t> m_y;
+    std::optional<uint16_t> m_colorTemperature;
     uint16_t m_enhancedHue;
     uint8_t m_saturation;
     bool m_colorloopActive;
     uint8_t m_colorloopDirection;
     uint8_t m_colorloopTime;
-    QString m_colorMode;
+    std::optional<QString> m_colorMode;
     uint16_t m_transitiontime;
 };
 
