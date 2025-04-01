@@ -2409,19 +2409,21 @@ int DeRestPluginPrivate::getSceneAttributes(const ApiRequest &req, ApiResponse &
                             const uint ed = l->effectDuration().value();
 
                             // The reverse conversion happens in streamHueManufacturerSpecificState()
-                            const uint resolutionBase = (ed == 0) ? 0 : (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s_BASE
-                                                                      : (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s_BASE
-                                                                      : (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s_BASE
-                                                                      : (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m_BASE
-                                                                      : (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m_BASE : 0;
+                            const uint resolutionBase = (ed == 0) ? 0 :
+                                                        (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s_BASE :
+                                                        (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s_BASE :
+                                                        (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s_BASE :
+                                                        (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m_BASE :
+                                                        (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m_BASE : 0;
 
-                            const uint resolution = (ed == 0) ? 1 : (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s
-                                                                  : (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s
-                                                                  : (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s
-                                                                  : (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m
-                                                                  : (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m : 1;
+                            const uint resolution = (ed == 0) ? 1 :
+                                                    (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s :
+                                                    (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s :
+                                                    (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s :
+                                                    (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m :
+                                                    (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m : 1;
 
-                            lstate["effect_duration"] = (resolutionBase - ed) * resolution;
+                            lstate["effect_duration"] = (uint)((resolutionBase - ed) * resolution);
                         }
 
                         if (l->effectSpeed().has_value())

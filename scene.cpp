@@ -215,8 +215,16 @@ std::vector<LightState> Scene::jsonToLights(const QString &json)
 
         map = i->toMap();
         state.setLightId(map[QLatin1String("lid")].toString());
-        state.setOn(map[QLatin1String("on")].toBool());
-        state.setBri(map[QLatin1String("bri")].toUInt());
+
+        if (map.contains(QLatin1String("on")))
+        {
+            state.setOn(map[QLatin1String("on")].toBool());
+        }
+        if (map.contains(QLatin1String("bri")))
+        {
+            state.setBri(map[QLatin1String("bri")].toUInt());
+        }
+
         state.setTransitionTime(map[QLatin1String("tt")].toUInt());
 
         if (map.contains(QLatin1String("x")) && map.contains(QLatin1String("y")))
@@ -268,10 +276,18 @@ std::vector<LightState> Scene::jsonToLights(const QString &json)
         }
 
         // Hue-specific attributes
-
-        state.setEffect(map[QLatin1String("effect")].toString());
-        state.setEffectDuration(map[QLatin1String("effect_duration")].toUInt());
-        state.setEffectSpeed(map[QLatin1String("effect_speed")].toUInt());
+        if (map.contains(QLatin1String("effect")))
+        {
+            state.setEffect(map[QLatin1String("effect")].toString());
+        }
+        if (map.contains(QLatin1String("effect_duration")))
+        {
+            state.setEffectDuration(map[QLatin1String("effect_duration")].toUInt());
+        }
+        if (map.contains(QLatin1String("effect_speed")))
+        {
+            state.setEffectSpeed(map[QLatin1String("effect_speed")].toUInt());
+        }
 
         lights.push_back(state);
     }

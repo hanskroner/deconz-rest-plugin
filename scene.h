@@ -103,7 +103,7 @@ public:
     void setEffect(const std::optional<QString> &effect);
     const std::optional<QString> &effect() const;
 
-    void setEffectDuration(const std::optional<uint8_t> &effecrDuration);
+    void setEffectDuration(const std::optional<uint8_t> &effectDuration);
     const std::optional<uint8_t> &effectDuration() const;
 
     void setEffectSpeed(const std::optional<uint8_t> &effectSpeed);
