@@ -2,8 +2,28 @@
  * Handle Hue-specific Dynamic Scenes.
  */
 
+#include <optional>
 #include "de_web_plugin.h"
 #include "de_web_plugin_private.h"
+
+// Constants for 'timed_effect duration'
+#define RESOLUTION_01s_BASE 0xFC
+#define RESOLUTION_05s_BASE 0xCC
+#define RESOLUTION_15s_BASE 0xA5
+#define RESOLUTION_01m_BASE 0x79
+#define RESOLUTION_05m_BASE 0x4A
+
+#define RESOLUTION_01s (1 * 10)         // 01s.
+#define RESOLUTION_05s (5 * 10)         // 05s.
+#define RESOLUTION_15s (15 * 10)        // 15s.
+#define RESOLUTION_01m (1 * 60 * 10)    // 01min.
+#define RESOLUTION_05m (5 * 60 * 100)   // 05min.
+
+#define RESOLUTION_01s_LIMIT (60 * 10)          // 01min.
+#define RESOLUTION_05s_LIMIT (5 * 60 * 10)      // 05min.
+#define RESOLUTION_15s_LIMIT (15 * 60 * 10)     // 15min.
+#define RESOLUTION_01m_LIMIT (60 * 60 * 10)     // 60min.
+#define RESOLUTION_05m_LIMIT (6 * 60 * 60 * 10) // 06hrs.
 
 /*! Scenes REST API broker.
     \param req - request data
@@ -213,6 +233,7 @@ int DeRestPluginPrivate::modifyHueScene(const ApiRequest &req, ApiResponse &rsp)
     Group *group = getGroupForId(gid);
     Scene scene;
     LightNode *light = getLightNodeForId(lid);
+    LightState *lightState;
     rsp.httpStatus = HttpStatusOk;
 
     userActivity();
@@ -266,6 +287,8 @@ int DeRestPluginPrivate::modifyHueScene(const ApiRequest &req, ApiResponse &rsp)
                 if (l->lid() == lid)
                 {
                     foundLightState = true;
+                    lightState = &(*l);
+
                     break;
                 }
             }
@@ -294,6 +317,77 @@ int DeRestPluginPrivate::modifyHueScene(const ApiRequest &req, ApiResponse &rsp)
         rsp.httpStatus = HttpStatusBadRequest;
         return REQ_READY_SEND;
     }
+
+    // Update Scene's LightState
+    lightState->setTransitionTime(map.contains("transitiontime") ? map["transitiontime"].toUInt() : lightState->transitionTime());
+    lightState->setOn(map.contains("on") ? std::optional(map["on"].toBool()) : std::nullopt);
+    lightState->setBri(map.contains("bri") ? std::optional(map["bri"].toUInt()) : std::nullopt);
+    if (map.contains("xy"))
+    {
+        const QVariantList xy = map["xy"].toList();
+        quint16 colorX = static_cast<quint16>(xy[0].toDouble() * 65535.0);
+        quint16 colorY = static_cast<quint16>(xy[1].toDouble() * 65535.0);
+
+        if (colorX > 65279) { colorX = 65279; }
+        else if (colorX == 0) { colorX = 1; }
+
+        if (colorY > 65279) { colorY = 65279; }
+        else if (colorY == 0) { colorY = 1; }
+
+        lightState->setColorMode("xy");
+        lightState->setX(colorX);
+        lightState->setY(colorY);
+        lightState->setColorTemperature(std::nullopt);
+    }
+    else if (map.contains("ct"))
+    {
+        lightState->setColorMode("ct");
+        lightState->setX(std::nullopt);
+        lightState->setY(std::nullopt);
+        lightState->setColorTemperature(map["ct"].toUInt());
+    }
+    else
+    {
+        lightState->setColorMode(std::nullopt);
+        lightState->setX(std::nullopt);
+        lightState->setY(std::nullopt);
+        lightState->setColorTemperature(std::nullopt);
+    }
+
+    // Hue-specific attributes
+    lightState->setEffect(map.contains("effect") ? std::optional(map["effect"].toString()) : std::nullopt);
+
+    if (map.contains("effect_duration"))
+    {
+        // TODO: Consolidate with code in hue.cpp
+        //      'streamHueManufacturerSpecificState()' does the same conversion
+        //      and defines the same constants
+        const uint ed = map["effect_duration"].toUInt();
+
+        const uint resolutionBase = (ed == 0) ? 0 :
+                                    (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s_BASE :
+                                    (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s_BASE :
+                                    (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s_BASE :
+                                    (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m_BASE :
+                                    (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m_BASE : 0;
+
+        const uint resolution = (ed == 0) ? 1 :
+                                (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s :
+                                (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s :
+                                (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s :
+                                (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m :
+                                (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m : 1;
+
+        const uint8_t effectDuration = resolutionBase - (ed / resolution);
+        lightState->setEffectDuration(effectDuration);
+    }
+    else
+    {
+        lightState->setEffectDuration(std::nullopt);
+    }
+
+    lightState->setEffectSpeed(map.contains("effect_speed") ? std::optional(map["effect_speed"].toDouble() * 254.0) : std::nullopt);
+
 
     TaskItem taskRef;
     taskRef.lightNode = getLightNodeForId(lid);
