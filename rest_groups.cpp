@@ -17,6 +17,25 @@
 #include "de_web_plugin_private.h"
 #include "json.h"
 
+// Constants for 'timed_effect duration'
+#define RESOLUTION_01s_BASE 0xFC
+#define RESOLUTION_05s_BASE 0xCC
+#define RESOLUTION_15s_BASE 0xA5
+#define RESOLUTION_01m_BASE 0x79
+#define RESOLUTION_05m_BASE 0x4A
+
+#define RESOLUTION_01s (1 * 10)         // 01s.
+#define RESOLUTION_05s (5 * 10)         // 05s.
+#define RESOLUTION_15s (15 * 10)        // 15s.
+#define RESOLUTION_01m (1 * 60 * 10)    // 01min.
+#define RESOLUTION_05m (5 * 60 * 100)   // 05min.
+
+#define RESOLUTION_01s_LIMIT 0xC0       // 01min.
+#define RESOLUTION_05s_LIMIT 0x91       // 05min.
+#define RESOLUTION_15s_LIMIT 0x6A       // 15min.
+#define RESOLUTION_01m_LIMIT 0x3E       // 60min.
+#define RESOLUTION_05m_LIMIT 0x02       // 06hrs.
+
 /*! Groups and scenes REST API broker.
     \param req - request data
     \param rsp - response data
@@ -2380,6 +2399,37 @@ int DeRestPluginPrivate::getSceneAttributes(const ApiRequest &req, ApiResponse &
                             lstate["colormode"] = l->colorMode().value();
                         }
                     }
+
+                    if (l->effect().has_value())
+                    {
+                        lstate["effect"] = l->effect().value();
+
+                        if (l->effectDuration().has_value())
+                        {
+                            const uint ed = l->effectDuration().value();
+
+                            // The reverse conversion happens in streamHueManufacturerSpecificState()
+                            const uint resolutionBase = (ed == 0) ? 0 : (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s_BASE
+                                                                      : (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s_BASE
+                                                                      : (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s_BASE
+                                                                      : (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m_BASE
+                                                                      : (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m_BASE : 0;
+
+                            const uint resolution = (ed == 0) ? 1 : (ed < RESOLUTION_01s_LIMIT) ? RESOLUTION_01s
+                                                                  : (ed < RESOLUTION_05s_LIMIT) ? RESOLUTION_05s
+                                                                  : (ed < RESOLUTION_15s_LIMIT) ? RESOLUTION_15s
+                                                                  : (ed < RESOLUTION_01m_LIMIT) ? RESOLUTION_01m
+                                                                  : (ed < RESOLUTION_05m_LIMIT) ? RESOLUTION_05m : 1;
+
+                            lstate["effect_duration"] = (resolutionBase - ed) * resolution;
+                        }
+
+                        if (l->effectSpeed().has_value())
+                        {
+                            lstate["effect_speed"] = (l->effectSpeed().value() / 254.0);
+                        }
+                    }
+
                     lstate["transitiontime"] = l->transitionTime();
 
                     lights.append(lstate);
