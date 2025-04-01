@@ -99,6 +99,16 @@ public:
     bool needRead() const { return m_needRead; }
     void setNeedRead(bool needRead);
 
+    // Hue-specific attributes
+    void setEffect(const std::optional<QString> &effect);
+    const std::optional<QString> &effect() const;
+
+    void setEffectDuration(const std::optional<uint8_t> &effecrDuration);
+    const std::optional<uint8_t> &effectDuration() const;
+
+    void setEffectSpeed(const std::optional<uint8_t> &effectSpeed);
+    const std::optional<uint8_t> &effectSpeed() const;
+
     QElapsedTimer tVerified;
 
 private:
@@ -115,6 +125,12 @@ private:
     uint8_t m_colorloopDirection;
     uint8_t m_colorloopTime;
     std::optional<QString> m_colorMode;
+
+    // Hue-specific attributes
+    std::optional<QString> m_effect;
+    std::optional<uint8_t> m_effectDuration;
+    std::optional<uint8_t> m_effectSpeed;
+
     uint16_t m_transitiontime;
 };
 

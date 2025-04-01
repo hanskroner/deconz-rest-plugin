@@ -163,6 +163,24 @@ QString Scene::lightsToString(const std::vector<LightState> &lights)
                 map[QLatin1String("clTime")] = (double)i->colorloopTime();
             }
         }
+
+        // Hue-specific attributes
+
+        if (i->effect().has_value())
+        {
+            map[QLatin1String("effect")] = i->effect().value();
+        }
+
+        if (i->effectDuration().has_value())
+        {
+            map[QLatin1String("effect_duration")] = (double)i->effectDuration().value();
+        }
+
+        if (i->effectSpeed().has_value())
+        {
+            map[QLatin1String("effect_speed")] = (double)i->effectSpeed().value();
+        }
+
         ls.append(map);
     }
 
@@ -187,6 +205,14 @@ std::vector<LightState> Scene::jsonToLights(const QString &json)
     for (; i != i_end; ++i)
     {
         LightState state;
+        // Clear out optionals
+        state.setOn(std::nullopt);
+        state.setBri(std::nullopt);
+        state.setColorMode(std::nullopt);
+        state.setX(std::nullopt);
+        state.setY(std::nullopt);
+        state.setColorTemperature(std::nullopt);
+
         map = i->toMap();
         state.setLightId(map[QLatin1String("lid")].toString());
         state.setOn(map[QLatin1String("on")].toBool());
@@ -241,6 +267,12 @@ std::vector<LightState> Scene::jsonToLights(const QString &json)
             }
         }
 
+        // Hue-specific attributes
+
+        state.setEffect(map[QLatin1String("effect")].toString());
+        state.setEffectDuration(map[QLatin1String("effect_duration")].toUInt());
+        state.setEffectSpeed(map[QLatin1String("effect_speed")].toUInt());
+
         lights.push_back(state);
     }
 
@@ -265,7 +297,10 @@ LightState::LightState() :
     m_colorloopDirection(0),
     m_colorloopTime(0),
     m_colorMode(QLatin1String("none")),
-    m_transitiontime(0)
+    m_transitiontime(0),
+    m_effect(std::nullopt),
+    m_effectDuration(std::nullopt),
+    m_effectSpeed(std::nullopt)
 {
 }
 
@@ -467,6 +502,53 @@ void LightState::setTransitionTime(uint16_t transitiontime)
     m_transitiontime = transitiontime;
 }
 
+// Hue-specific attributes
+
+
+/*! Returns the effect of the scene.
+ */
+const std::optional<QString> &LightState::effect() const
+{
+    return m_effect;
+}
+
+/*! Sets the effect of the scene.
+    \param effect the effect of the scene
+ */
+void LightState::setEffect(const std::optional<QString> &effect)
+{
+    m_effect = effect;
+}
+
+/*! Returns the effect duration of the scene.
+ */
+const std::optional<uint8_t> &LightState::effectDuration() const
+{
+    return m_effectDuration;
+}
+
+/*! Sets the effect duration of the scene.
+    \param effectDuration the effect duration of the scene
+ */
+void LightState::setEffectDuration(const std::optional<uint8_t> &effectDuration)
+{
+    m_effectDuration = effectDuration;
+}
+
+/*! Returns the effect speed of the scene.
+ */
+const std::optional<uint8_t> &LightState::effectSpeed() const
+{
+    return m_effectSpeed;
+}
+
+/*! Sets the effect speed of the scene.
+    \param effectSpeed the effect speed of the scene
+ */
+void LightState::setEffectSpeed(const std::optional<uint8_t> &effectSpeed)
+{
+    m_effectSpeed = effectSpeed;
+}
 /*! Sets need read flag.
     \param needRead - true if attribute should be queried by view scene command
  */
