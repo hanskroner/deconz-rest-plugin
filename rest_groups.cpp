@@ -2439,6 +2439,19 @@ int DeRestPluginPrivate::getSceneAttributes(const ApiRequest &req, ApiResponse &
                 rsp.map["name"] = i->name;
                 rsp.map["lights"] = lights;
                 rsp.map["state"] = i->state;
+
+                // Hue Dynamic States
+                if (i->dynamicState().has_value())
+                {
+                    bool ok;
+                    QVariant var = Json::parse(i->dynamicStateToString(), ok);
+
+                    if (ok)
+                    {
+                        rsp.map["dynamics"] = var.toMap();
+                    }
+                }
+
                 return REQ_READY_SEND;
             }
         }
@@ -3085,6 +3098,34 @@ int DeRestPluginPrivate::recallScene(const ApiRequest &req, ApiResponse &rsp)
         rsp.httpStatus = HttpStatusServiceUnavailable;
         rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/groups/%1/scenes/%2").arg(gid).arg(sid), QString("gateway busy")));
         return REQ_READY_SEND;
+    }
+
+    // Automatic Recall of Hue Dynamic Scenes
+    if (scene->dynamicState().has_value() && scene->dynamicState().value().autoDynamic())
+    {
+        bool ok;
+        QVariant var = Json::parse(scene->dynamicStateToString(), ok);
+        QVariantMap map = var.toMap();
+
+        if (!ok)
+        {
+            rsp.httpStatus = HttpStatusServiceUnavailable;
+            rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("invalid dynamic scene definition")));
+            return REQ_READY_SEND;
+        }
+
+        TaskItem taskRef;
+        taskRef.req.setDstEndpoint(0xFF);
+        taskRef.req.setDstAddressMode(deCONZ::ApsGroupAddress);
+        taskRef.req.dstAddress().setGroup(group->address());
+        taskRef.req.setSrcEndpoint(getSrcEndpoint(0, taskRef.req));
+
+        if (!addTaskHueDynamicSceneRecall(taskRef, group->address(), scene->id, map))
+        {
+            rsp.httpStatus = HttpStatusServiceUnavailable;
+            rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("gateway busy")));
+            return REQ_READY_SEND;
+        }
     }
 
     {

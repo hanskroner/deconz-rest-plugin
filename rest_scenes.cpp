@@ -128,6 +128,18 @@ int DeRestPluginPrivate::getAllScenes(const ApiRequest &req, ApiResponse &rsp)
                     scene["states"] = states;
                     scene["transitiontime"] = s->transitiontime();
 
+                    // Hue Dynamic States
+                    if (s->dynamicState().has_value())
+                    {
+                        bool ok;
+                        QVariant var = Json::parse(s->dynamicStateToString(), ok);
+
+                        if (ok)
+                        {
+                            scene["dynamics"] = var.toMap();
+                        }
+                    }
+
                     scenes[sceneId] = scene;
                 }
             }
