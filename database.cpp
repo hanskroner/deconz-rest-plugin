@@ -60,6 +60,7 @@ static bool upgradeDbToUserVersion7();
 static bool upgradeDbToUserVersion8();
 static bool upgradeDbToUserVersion9();
 static bool upgradeDbToUserVersion10();
+static bool upgradeDbToUserVersion11();
 static int sqliteLoadAuthCallback(void *user, int ncols, char **colval , char **colname);
 static int sqliteLoadConfigCallback(void *user, int ncols, char **colval , char **colname);
 static int sqliteLoadUserparameterCallback(void *user, int ncols, char **colval , char **colname);
@@ -192,6 +193,10 @@ void DeRestPluginPrivate::checkDbUserVersion()
         updated = upgradeDbToUserVersion10();
     }
     else if (userVersion == 10)
+    {
+        updated = upgradeDbToUserVersion11();
+    }
+    else if (userVersion == 11)
     {
         // latest version
     }
@@ -808,6 +813,41 @@ static bool upgradeDbToUserVersion10()
     }
 
     return setDbUserVersion(10);
+}
+
+/*! Upgrades database to user_version 11. */
+static bool upgradeDbToUserVersion11()
+{
+    DBG_Printf(DBG_INFO, "DB upgrade to user_version 11\n");
+
+    /*
+       Adds a 'dynamics' column to the 'scenes' table to hold the state of
+       dynamic scenes.
+     */
+
+    // create tables
+    const char *sql[] = {
+        "ALTER TABLE scenes ADD COLUMN dynamics TEXT",
+        nullptr
+    };
+
+    for (int i = 0; sql[i] != nullptr; i++)
+    {
+        char *errmsg = nullptr;
+        int rc = sqlite3_exec(db, sql[i], nullptr, nullptr, &errmsg);
+
+        if (rc != SQLITE_OK)
+        {
+            if (errmsg)
+            {
+                DBG_Printf(DBG_ERROR_L2, "SQL exec failed: %s, error: %s (%d), line: %d\n", sql[i], errmsg, rc, __LINE__);
+                sqlite3_free(errmsg);
+            }
+            return false;
+        }
+    }
+
+    return setDbUserVersion(11);
 }
 
 /*! Stores a source route.
@@ -2460,6 +2500,10 @@ static int sqliteLoadAllScenesCallback(void *user, int ncols, char **colval , ch
             {
                 scene.setLights(Scene::jsonToLights(val));
             }
+            else if (strcmp(colname[i], "dynamics") == 0)
+            {
+                scene.setDynamicState(scene.jsonToDynamics(val));
+            }
         }
     }
 
@@ -3510,7 +3554,7 @@ static int sqliteLoadAllSensorsCallback(void *user, int ncols, char **colval , c
                     DBG_Printf(DBG_INFO, "DB skip loading sensor %s %s, handled by DDF %s\n", qPrintable(sensor.name()), qPrintable(sensor.id()), qPrintable(ddf.product));
                     return 0;
                 }
-                
+
                 DBG_Printf(DBG_INFO, "DB legacy loading sensor %s %s, should be added into DDF %s\n", qPrintable(sensor.name()), qPrintable(sensor.id()), qPrintable(ddf.product));
             }
         }
@@ -5412,6 +5456,7 @@ void DeRestPluginPrivate::saveDb()
                     QString sid = "0x" + QString("%1").arg(si->id, 2, 16, QLatin1Char('0')).toUpper();
 
                     QString lights = Scene::lightsToString(si->lights());
+                    QString dynamics = si->dynamicStateToString();
                     QString sql;
 
                     if (si->state == Scene::StateDeleted)
@@ -5421,13 +5466,14 @@ void DeRestPluginPrivate::saveDb()
                     }
                     else
                     {
-                        sql = QString(QLatin1String("REPLACE INTO scenes (gsid, gid, sid, name, transitiontime, lights) VALUES ('%1', '%2', '%3', '%4', '%5', '%6')"))
+                        sql = QString(QLatin1String("REPLACE INTO scenes (gsid, gid, sid, name, transitiontime, lights, dynamics) VALUES ('%1', '%2', '%3', '%4', '%5', '%6', '%7')"))
                             .arg(gsid)
                             .arg(gid)
                             .arg(sid)
                             .arg(dbEscapeString(si->name))
                             .arg(si->transitiontime())
-                            .arg(lights);
+                            .arg(lights)
+                            .arg(dynamics);
                     }
                     DBG_Printf(DBG_INFO_L2, "DB sql exec %s\n", qPrintable(sql));
                     errmsg = NULL;
