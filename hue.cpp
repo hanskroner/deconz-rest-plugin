@@ -839,6 +839,19 @@ bool DeRestPluginPrivate::validateHueDynamicScenePalette(ApiResponse &rsp, const
                 }
             }
         }
+        else if (param == "ct")
+        {
+            paramOk = true;
+            if (map[param].type() == QVariant::Double)
+            {
+                const uint ct = map[param].toUInt(&ok);
+                if (ok && ct <= 0xFFFF)
+                {
+                    valueOk = true;
+                    validatedParameters.append(param);
+                }
+            }
+        }
         else if (param == "xy")
         {
             paramOk = true;
@@ -921,6 +934,15 @@ bool DeRestPluginPrivate::validateHueDynamicScenePalette(ApiResponse &rsp, const
                     valueOk = true;
                     validatedParameters.append(param);
                 }
+            }
+        }
+        else if (param == "auto_dynamic")
+        {
+            paramOk = true;
+            if (map[param].type() == QVariant::Bool)
+            {
+                valueOk = true;
+                validatedParameters.append(param);
             }
         }
 
