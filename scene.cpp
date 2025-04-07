@@ -8,6 +8,7 @@
  *
  */
 #include <QStringBuilder>
+#include <math.h>
 #include "scene.h"
 
 /*! Constructor.
@@ -17,7 +18,8 @@ Scene::Scene() :
     externalMaster(false),
     groupAddress(0),
     id(0),
-    m_transitiontime(0)
+    m_transitiontime(0),
+    m_dynamicState(std::nullopt)
 {
 }
 
@@ -56,6 +58,21 @@ const std::vector<LightState> &Scene::lights() const
 void Scene::setLights(const std::vector<LightState> &lights)
 {
     m_lights = lights;
+}
+
+/*! Returns the dynamic scene of the scene - if any.
+ */
+const std::optional<DynamicSceneState> &Scene::dynamicState() const
+{
+    return m_dynamicState;
+}
+
+/*! Sets the dynamic scene of the scene - if any.
+    \param dynamic the dynamic state of the scene
+ */
+void Scene::setDynamicState(const std::optional<DynamicSceneState> &dynamic)
+{
+    m_dynamicState = dynamic;
 }
 
 /*! Adds a light to the lights of the scene.
@@ -109,6 +126,104 @@ LightState *Scene::getLightState(const QString &lid)
         }
     }
     return 0;
+}
+
+/*! Exports the dynamic state of the scene into JSONString.
+ */
+QString Scene::dynamicStateToString() const
+{
+    QVariantMap map;
+
+    if (m_dynamicState->brightness().has_value())
+    {
+        map[QLatin1String("bri")] = (double)m_dynamicState->brightness().value();
+    }
+
+    if (m_dynamicState->colorTemperature().has_value())
+    {
+        map[QLatin1String("ct")] = (double)m_dynamicState->colorTemperature().value();
+    }
+
+    if (m_dynamicState->colorPalette().has_value())
+    {
+        QVariantList ls;
+        std::vector<DynamicSceneColor>::const_iterator i = m_dynamicState->colorPalette().value().begin();
+        std::vector<DynamicSceneColor>::const_iterator end = m_dynamicState->colorPalette().value().end();
+
+        for (; i != end; ++i)
+        {
+            QVariantList color;
+            color.append(i->x);
+            color.append(i->y);
+            // !!!: QVariantList.append() is overloaded and would flatten the list
+            //      Use QVariantList.insert() instead.
+            ls.insert(ls.size(), color);
+        }
+
+        map[QLatin1String("xy")] = ls;
+    }
+
+    map[QLatin1String("auto_dynamic")] = (bool)m_dynamicState->autoDynamic();
+    map[QLatin1String("effect_speed")] = (double)m_dynamicState->effectSpeed();
+
+    return Json::serialize(map);
+}
+
+/*! Imports the dynamic state of the scene from JSONString.
+    \param json a JSON string that represents the state of a dynamic scene
+ */
+DynamicSceneState Scene::jsonToDynamics(const QString &json) const
+{
+    bool ok;
+    QVariant var = Json::parse(json, ok);
+    QVariantMap map = var.toMap();
+    DynamicSceneState dynamicState;
+
+    if (!ok)
+    {
+        return dynamicState;
+    }
+
+    // !!!: Not doing any validation
+
+    if (map.contains("bri"))
+    {
+        dynamicState.setBrightness(map["bri"].toUInt());
+    }
+
+    if (map.contains("ct"))
+    {
+        dynamicState.setColorTemperature(map["ct"].toUInt());
+    }
+
+    if (map.contains("xy")) {
+        std::vector<DynamicSceneColor> colorsVector;
+        QVariantList colors = map["xy"].toList();
+
+        // Palette Colors
+        for (auto &color : colors)
+        {
+            QVariantList xy = color.toList();
+            double x = xy[0].toDouble();
+            double y = xy[1].toDouble();
+
+            colorsVector.push_back(DynamicSceneColor {x, y});
+        }
+
+        dynamicState.setColorPalette(colorsVector);
+    }
+
+    if (map.contains("auto_dynamic"))
+    {
+        dynamicState.setAutoDynamic(map["auto_dynamic"].toBool());
+    }
+
+    if (map.contains("effect_speed"))
+    {
+        dynamicState.setEffectSpeed(map["effect_speed"].toDouble());
+    }
+
+    return dynamicState;
 }
 
 /*! Transfers lights of the scene into JSONString.
@@ -571,4 +686,92 @@ void LightState::setEffectSpeed(const std::optional<uint8_t> &effectSpeed)
 void LightState::setNeedRead(bool needRead)
 {
     m_needRead = needRead;
+}
+
+
+// LightState
+
+/*! Constructor.
+ */
+DynamicSceneState::DynamicSceneState() :
+    m_brightness(std::nullopt),
+    m_colorTemperature(std::nullopt),
+    m_autoDynamic(false),
+    m_effectSpeed(152) // 0.6
+{
+}
+
+/*! Returns the 'bri' value for the dynamic scene of the scene - if any.
+ */
+const std::optional<uint8_t> &DynamicSceneState::brightness() const
+{
+    return m_brightness;
+}
+
+/*! Sets the 'bri' value for the dynamic scene of the scene - if any.
+    \param brightness the brightness value for the dynamic state of the scene
+ */
+void DynamicSceneState::setBrightness(const std::optional<uint8_t> &brightness)
+{
+    m_brightness = brightness;
+}
+
+/*! Returns the 'ct' value for the dynamic scene of the scene - if any.
+ */
+const std::optional<uint16_t> &DynamicSceneState::colorTemperature() const
+{
+    return m_colorTemperature;
+}
+
+/*! Sets the 'ct' value for the dynamic scene of the scene - if any.
+    \param colorTemperature the color temperature values for the dynamic state of the scene
+ */
+void DynamicSceneState::setColorTemperature(const std::optional<uint16_t> &colorTemperature)
+{
+    m_colorTemperature = colorTemperature;
+}
+
+/*! Return the collection of colors used in this dynamic scene.
+ */
+const std::optional<std::vector<DynamicSceneColor>> &DynamicSceneState::colorPalette() const
+{
+    return m_colorPalette;
+}
+
+/*! Sets the collection of colors used in this dynamic scene.
+    \param colorPalette a collection of colors used in this dynamic scene
+ */
+void DynamicSceneState::setColorPalette(const std::optional<std::vector<DynamicSceneColor>> &colorPalette)
+{
+    m_colorPalette = colorPalette;
+}
+
+/*! Returns whether this dynamic scene should auto-play on recall.
+ */
+const bool &DynamicSceneState::autoDynamic() const
+{
+    return m_autoDynamic;
+}
+
+/*! Sets whether this dynamic scene should auto-play on recall.
+    \param autoDynamic whether this dynamic scene should auto-play on recall
+ */
+void DynamicSceneState::setAutoDynamic(const bool &autoDynamic)
+{
+    m_autoDynamic = autoDynamic;
+}
+
+/*! Returns the effect speed for this dynamic scene.
+ */
+const double &DynamicSceneState::effectSpeed() const
+{
+    return m_effectSpeed;
+}
+
+/*! Returns the effect speed for this dynamic scene.
+    \param effectSpeed the effect speed for this dynamic scene
+ */
+void DynamicSceneState::setEffectSpeed(const double &effectSpeed)
+{
+    m_effectSpeed = effectSpeed;
 }
