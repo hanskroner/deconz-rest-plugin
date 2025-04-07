@@ -1061,8 +1061,9 @@ public:
 
     // REST API hue-scenes
     int handleHueScenesApi(const ApiRequest &req, ApiResponse &rsp);
-    int playHueDynamicScene(const ApiRequest &req, ApiResponse &rsp);
     int modifyHueScene(const ApiRequest &req, ApiResponse &rsp);
+    int modifyHueDynamicScene(const ApiRequest &req, ApiResponse &rsp);
+    int recallHueDynamicScene(const ApiRequest &req, ApiResponse &rsp);
 
     bool groupToMap(const ApiRequest &req, const Group *group, QVariantMap &map);
 

@@ -3,6 +3,7 @@
  */
 
 #include <optional>
+#include <math.h>
 #include "de_web_plugin.h"
 #include "de_web_plugin_private.h"
 
@@ -38,10 +39,15 @@ int DeRestPluginPrivate::handleHueScenesApi(const ApiRequest &req, ApiResponse &
         return REQ_NOT_HANDLED;
     }
 
-    // PUT /api/<apikey>/hue-scenes/groups/<group_id>/scenes/<scene_id>/play
-    else if ((req.path.size() == 8) && (req.hdr.method() == "PUT")  && (req.path[5] == "scenes") && (req.path[7] == "play"))
+    // PUT, PATCH /api/<apikey>/hue-scenes/groups/<group_id>/scenes/<scene_id>/dynamic-state
+    else if ((req.path.size() == 8) && (req.hdr.method() == "PUT" || req.hdr.method() == "PATCH")  && (req.path[5] == "scenes") && (req.path[7] == "dynamic-state"))
     {
-        return playHueDynamicScene(req, rsp);
+        return modifyHueDynamicScene(req, rsp);
+    }
+    // PUT /api/<apikey>/hue-scenes/groups/<group_id>/scenes/<scene_id>/recall
+    else if ((req.path.size() == 8) && (req.hdr.method() == "PUT")  && (req.path[5] == "scenes") && (req.path[7] == "recall"))
+    {
+        return recallHueDynamicScene(req, rsp);
     }
     // PUT, PATCH /api/<apikey>/hue-scenes/groups/<group_id>/scenes/<scene_id>/lights/<light_id>/state
     else if ((req.path.size() == 10) && (req.hdr.method() == "PUT" || req.hdr.method() == "PATCH")  && (req.path[5] == "scenes") && (req.path[7] == "lights"))
@@ -52,11 +58,11 @@ int DeRestPluginPrivate::handleHueScenesApi(const ApiRequest &req, ApiResponse &
     return REQ_NOT_HANDLED;
 }
 
-/*! PUT /api/<apikey>/groups/<group_id>/scenes/<scene_id>/play
+/*! PUT /api/<apikey>/groups/<group_id>/scenes/<scene_id>/dynamic-state
     \return REQ_READY_SEND
             REQ_NOT_HANDLED
  */
-int DeRestPluginPrivate::playHueDynamicScene(const ApiRequest &req, ApiResponse &rsp)
+int DeRestPluginPrivate::modifyHueDynamicScene(const ApiRequest &req, ApiResponse &rsp)
 {
     bool ok;
     QVariantMap rspItem;
@@ -76,15 +82,22 @@ int DeRestPluginPrivate::playHueDynamicScene(const ApiRequest &req, ApiResponse 
 
     if (!isInNetwork())
     {
-        rsp.list.append(errorToMap(ERR_NOT_CONNECTED, QString("/hue-scenes/groups/%1/scenes/%2").arg(gid).arg(sid), "not connected"));
+        rsp.list.append(errorToMap(ERR_NOT_CONNECTED, QString("/hue-scenes/groups/%1/scenes/%2/dynamic-state").arg(gid).arg(sid), "not connected"));
         rsp.httpStatus = HttpStatusServiceUnavailable;
+        return REQ_READY_SEND;
+    }
+
+    if (!ok)
+    {
+        rsp.list.append(errorToMap(ERR_INVALID_JSON, QString("/hue-scenes/groups/%1/scenes/%2/dynamic-state").arg(gid).arg(sid), QString("body contains invalid JSON")));
+        rsp.httpStatus = HttpStatusBadRequest;
         return REQ_READY_SEND;
     }
 
     if (!group || (group->state() != Group::StateNormal))
     {
         rsp.httpStatus = HttpStatusNotFound;
-        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/hue-scenes/groups/%1/scenes/%2").arg(gid).arg(sid), QString("resource, /groups/%1/scenes/%2, not available").arg(gid).arg(sid)));
+        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/hue-scenes/groups/%1/scenes/%2/dynamic-state").arg(gid).arg(sid), QString("resource, /groups/%1/scenes/%2, not available").arg(gid).arg(sid)));
         return REQ_READY_SEND;
     }
 
@@ -155,20 +168,7 @@ int DeRestPluginPrivate::playHueDynamicScene(const ApiRequest &req, ApiResponse 
     if (!scene || (scene->state != Scene::StateNormal))
     {
         rsp.httpStatus = HttpStatusNotFound;
-        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/hue-scenes/groups/%1/scenes/%2").arg(gid).arg(sid), QString("resource, /groups/%1/scenes/%2, not available").arg(gid).arg(sid)));
-        return REQ_READY_SEND;
-    }
-
-    TaskItem taskRef;
-    taskRef.req.setDstEndpoint(0xFF);
-    taskRef.req.setDstAddressMode(deCONZ::ApsGroupAddress);
-    taskRef.req.dstAddress().setGroup(group->address());
-    taskRef.req.setSrcEndpoint(getSrcEndpoint(0, taskRef.req));
-
-    if (!callScene(group, sceneId))
-    {
-        rsp.httpStatus = HttpStatusServiceUnavailable;
-        rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/hue-scenes/groups/%1/scenes/%2").arg(gid).arg(sid), QString("gateway busy")));
+        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/hue-scenes/groups/%1/scenes/%2/dynamic-state").arg(gid).arg(sid), QString("resource, /groups/%1/scenes/%2, not available").arg(gid).arg(sid)));
         return REQ_READY_SEND;
     }
 
@@ -179,10 +179,180 @@ int DeRestPluginPrivate::playHueDynamicScene(const ApiRequest &req, ApiResponse 
         return REQ_READY_SEND;
     }
 
+    // Populate the DynamicSceneState
+    if (scene->dynamicState().has_value())
+    {
+        // !!!: Understand if this leaks memory
+        scene->setDynamicState(std::nullopt);
+    }
+
+    if (!map.isEmpty())
+    {
+        scene->setDynamicState(scene->jsonToDynamics(Json::serialize(map)));
+    }
+
+    updateGroupEtag(group);
+
+    queSaveDb(DB_SCENES, DB_SHORT_SAVE_DELAY);
+
+    rspItemState["id"] = sid;
+    rspItem["success"] = rspItemState;
+    rsp.list.append(rspItem);
+    rsp.httpStatus = HttpStatusOk;
+
+    return REQ_READY_SEND;
+}
+
+/*! PUT /api/<apikey>/groups/<group_id>/scenes/<scene_id>/recall
+    \return REQ_READY_SEND
+            REQ_NOT_HANDLED
+ */
+int DeRestPluginPrivate::recallHueDynamicScene(const ApiRequest &req, ApiResponse &rsp)
+{
+    bool ok;
+    QVariantMap rspItem;
+    QVariantMap rspItemState;
+    QVariant var = Json::parse(req.content, ok);
+    QVariantMap map = var.toMap();
+    const QString &gid = req.path[4];
+    const QString &sid = req.path[6];
+    Scene *scene = nullptr;
+    Group *group = getGroupForId(gid);
+    rsp.httpStatus = HttpStatusOk;
+
+    if (req.sock)
+    {
+        userActivity();
+    }
+
+    if (!isInNetwork())
+    {
+        rsp.list.append(errorToMap(ERR_NOT_CONNECTED, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), "not connected"));
+        rsp.httpStatus = HttpStatusServiceUnavailable;
+        return REQ_READY_SEND;
+    }
+
+    if (!ok)
+    {
+        rsp.list.append(errorToMap(ERR_INVALID_JSON, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("body contains invalid JSON")));
+        rsp.httpStatus = HttpStatusBadRequest;
+        return REQ_READY_SEND;
+    }
+
+    if (!group || (group->state() != Group::StateNormal))
+    {
+        rsp.httpStatus = HttpStatusNotFound;
+        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("resource, /groups/%1/scenes/%2, not available").arg(gid).arg(sid)));
+        return REQ_READY_SEND;
+    }
+
+    // check if scene exists
+    uint8_t sceneId = 0;
+    ok = false;
+    if (sid == QLatin1String("next") || sid == QLatin1String("prev"))
+    {
+        ResourceItem *item = group->item(RActionScene);
+        DBG_Assert(item != 0);
+        uint lastSceneId = 0;
+        if (item && !item->toString().isEmpty())
+        {
+            lastSceneId = item->toString().toUInt(&ok);
+        }
+
+        int idx = -1;
+        std::vector<quint8> scenes; // available scenes
+
+        for (const Scene &s : group->scenes)
+        {
+            if (s.state != Scene::StateNormal)
+            {
+                continue;
+            }
+
+            if (lastSceneId == s.id)
+            {
+                idx = scenes.size(); // remember current index
+            }
+            scenes.emplace_back(s.id);
+        }
+
+        if (scenes.size() == 1)
+        {
+            ok = true;
+            sceneId = scenes[0];
+        }
+        else if (scenes.size() > 1)
+        {
+            ok = true;
+            if (idx == -1) // not found
+            {
+                idx = 0; // use first
+            }
+            else if (sid[0] == 'p') // prev
+            {
+                if (idx > 0)  { idx--; }
+                else          { idx = scenes.size() - 1; } // jump to last scene
+            }
+            else // next
+            {
+                if (idx < int(scenes.size() - 1)) { idx++; }
+                else  { idx = 0; } // jump to first scene
+            }
+            DBG_Assert(idx >= 0 && idx < int(scenes.size()));
+            sceneId = scenes[idx];
+        }
+        // else ok == false
+    }
+    else
+    {
+        sceneId = sid.toUInt(&ok);
+    }
+
+    scene = ok ? group->getScene(sceneId) : nullptr;
+
+    if (!scene || (scene->state != Scene::StateNormal))
+    {
+        rsp.httpStatus = HttpStatusNotFound;
+        rsp.list.append(errorToMap(ERR_RESOURCE_NOT_AVAILABLE, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("resource, /groups/%1/scenes/%2, not available").arg(gid).arg(sid)));
+        return REQ_READY_SEND;
+    }
+
+    if (!callScene(group, sceneId))
+    {
+        rsp.httpStatus = HttpStatusServiceUnavailable;
+        rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("gateway busy")));
+        return REQ_READY_SEND;
+    }
+
+    // If no dynamic state definition was provided, but there's one stored
+    // for this scene, try recalling that.
+    if (map.isEmpty() && scene->dynamicState().has_value())
+    {
+        QVariant var = Json::parse(scene->dynamicStateToString(), ok);
+
+        if (ok)
+        {
+            map = var.toMap();
+        }
+    }
+
+    QList<QString> validatedParameters;
+    if (!validateHueDynamicScenePalette(rsp, scene, map, validatedParameters))
+    {
+        rsp.httpStatus = HttpStatusBadRequest;
+        return REQ_READY_SEND;
+    }
+
+    TaskItem taskRef;
+    taskRef.req.setDstEndpoint(0xFF);
+    taskRef.req.setDstAddressMode(deCONZ::ApsGroupAddress);
+    taskRef.req.dstAddress().setGroup(group->address());
+    taskRef.req.setSrcEndpoint(getSrcEndpoint(0, taskRef.req));
+
     if (!addTaskHueDynamicSceneRecall(taskRef, group->address(), scene->id, map))
     {
         rsp.httpStatus = HttpStatusServiceUnavailable;
-        rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/hue-scenes/groups/%1/scenes/%2").arg(gid).arg(sid), QString("gateway busy")));
+        rsp.list.append(errorToMap(ERR_BRIDGE_BUSY, QString("/hue-scenes/groups/%1/scenes/%2/recall").arg(gid).arg(sid), QString("gateway busy")));
         return REQ_READY_SEND;
     }
 
