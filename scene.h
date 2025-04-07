@@ -18,6 +18,49 @@
 #include <QElapsedTimer>
 #include "json.h"
 
+/*! \struct DynamicSceneState
+
+    Represents a color in a Hue Dynamic Scene
+ */
+struct DynamicSceneColor
+{
+    double x;
+    double y;
+};
+
+/*! \class DynamicSceneState
+
+    Represents a Hue Dynamic Scene
+ */
+class DynamicSceneState
+{
+
+public:
+    DynamicSceneState();
+
+    const std::optional<uint8_t> &brightness() const;
+    void setBrightness(const std::optional<uint8_t> &brightness);
+    const std::optional<uint16_t> &colorTemperature() const;
+    void setColorTemperature(const std::optional<uint16_t> &colorTemperature);
+
+    const std::optional<std::vector<DynamicSceneColor>> &colorPalette() const;
+    void setColorPalette(const std::optional<std::vector<DynamicSceneColor>> &colorPalette);
+
+    const bool &autoDynamic() const;
+    void setAutoDynamic(const bool &autoDynamic);
+    const double &effectSpeed() const;
+    void setEffectSpeed(const double &effectSpeed);
+
+private:
+    std::optional<uint8_t> m_brightness;
+    std::optional<uint16_t> m_colorTemperature;
+    std::optional<std::vector<DynamicSceneColor>> m_colorPalette;
+
+    bool m_autoDynamic;
+    double m_effectSpeed;
+};
+
+
 class LightState;
 
 /*! \class Scene
@@ -51,12 +94,21 @@ public:
     bool deleteLight(const QString &lid);
     LightState *getLightState(const QString &lid);
 
+    // Hue-specific Dynamic Scenes
+    const std::optional<DynamicSceneState> &dynamicState() const;
+    void setDynamicState(const std::optional<DynamicSceneState> &dynamic);
+    QString dynamicStateToString() const;
+    DynamicSceneState jsonToDynamics(const QString &json) const;
+
     static QString lightsToString(const std::vector<LightState> &lights);
     static std::vector<LightState> jsonToLights(const QString &json);
 
 private:
     uint16_t m_transitiontime;
     std::vector<LightState> m_lights;
+
+    // Hue-specific Dynamic Scenes
+    std::optional<DynamicSceneState> m_dynamicState;
 };
 
 
