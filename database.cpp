@@ -2522,7 +2522,10 @@ static int sqliteLoadAllScenesCallback(void *user, int ncols, char **colval , ch
             }
             else if (strcmp(colname[i], "dynamics") == 0)
             {
-                scene.setDynamicState(scene.jsonToDynamics(val));
+                if (!val.isEmpty())
+                {
+                    scene.setDynamicState(scene.jsonToDynamics(val));
+                }
             }
         }
     }

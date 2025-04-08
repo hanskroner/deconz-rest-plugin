@@ -134,6 +134,11 @@ QString Scene::dynamicStateToString() const
 {
     QVariantMap map;
 
+    if (!m_dynamicState.has_value())
+    {
+        return "";
+    }
+
     if (m_dynamicState->brightness().has_value())
     {
         map[QLatin1String("bri")] = (double)m_dynamicState->brightness().value();

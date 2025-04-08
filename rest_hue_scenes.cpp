@@ -179,13 +179,14 @@ int DeRestPluginPrivate::modifyHueDynamicScene(const ApiRequest &req, ApiRespons
         return REQ_READY_SEND;
     }
 
-    // Populate the DynamicSceneState
-    if (scene->dynamicState().has_value())
+    // Remove any previous dynamic state to start with a clean slate
+    // If the map is empty, remove any potential dynamic state as well.
+    if (scene->dynamicState().has_value() || map.isEmpty())
     {
-        // !!!: Understand if this leaks memory
         scene->setDynamicState(std::nullopt);
     }
 
+    // Populate the DynamicSceneState
     if (!map.isEmpty())
     {
         scene->setDynamicState(scene->jsonToDynamics(Json::serialize(map)));
